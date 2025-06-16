@@ -1,0 +1,43 @@
+{
+  "name": "backend-clothes-api",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js",
+    "lint": "eslint .",
+    "test": "jest",
+    "setup-admin": "node setupadmin.js",
+    "migrate:brands": "node migrations/20240318_add_logo_to_brands.js",
+    "migrate:users": "node migrations/20240318_add_profile_picture_to_users.js",
+    "migrate:products": "node migrations/20240318_add_image_fields_to_product_variants.js",
+    "migrate:all": "npm run migrate:brands && npm run migrate:users && npm run migrate:products",
+    "migrate:product":"node migrations/create_product_schema.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "bcrypt": "^5.1.1",
+    "bcryptjs": "^2.4.3",
+    "body-parser": "^1.20.3",
+    "cloudinary": "^1.41.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "express-rate-limit": "^7.5.0",
+    "express-validator": "^6.14.0",
+    "helmet": "^8.0.0",
+    "jsonwebtoken": "^9.0.2",
+    "migrate-mongoose": "^0.1.0",
+    "mongodb": "^6.12.0",
+    "mongoose": "^8.9.3",
+    "morgan": "^1.10.0",
+    "multer": "^2.0.1",
+    "multer-storage-cloudinary": "^4.0.0",
+    "swagger-ui-express": "^4.3.0",
+    "winston": "^3.8.0",
+    "yamljs": "^0.3.0"
+  }
+}
