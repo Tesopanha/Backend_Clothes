@@ -1,5 +1,20 @@
 const mongoose = require('mongoose');
 
+const imageSchema = new mongoose.Schema({
+    imageURL:{
+        type: String,
+        required: true,
+    },
+    cloudinaryId: {
+        type: String,
+        required: true,
+    },
+    isMain:{
+        type: Boolean,
+        default: false
+    }
+} , { timestamps: true});
+
 const variantSchema = new mongoose.Schema({
     variantId: { 
         type: String, 
@@ -21,14 +36,7 @@ const variantSchema = new mongoose.Schema({
         required: true, 
         min: 0 
     },
-    imageURL: { 
-        type: String, 
-        required: false 
-    },
-    cloudinaryId: { 
-        type: String, 
-        required: false 
-    }
+    images: [imageSchema]
 }, { 
     timestamps: true 
 });

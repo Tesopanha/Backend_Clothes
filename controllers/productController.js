@@ -5,6 +5,7 @@ const Color = require('../models/Color');
 const Size = require('../models/Size');
 const { validateIds, validateVariant, validateVariants } = require('../utils/validateIds');
 const { cloudinary } = require('../config/cloudinary');
+const mongoose = require('mongoose');
 
 // Create a new product
 exports.createProduct = asyncHandler(async (req, res) => {
@@ -32,16 +33,42 @@ exports.createProduct = asyncHandler(async (req, res) => {
 
         // Map uploaded files to variants and add variantId
         const updatedVariants = variants.map((variant, index) => {
-            if (!req.files[index]) {
-                throw new Error(`Missing image for variant ${index + 1}`);
-            }
+             // Check for both single and multiple image formats
+             let variantImages = req.files.filter(file => 
+                file.fieldname.startsWith(`files[${index}]`)
+            );
+
+            
+     // If no images found with array format, check single image format
+        if (variantImages.length === 0) {
+            variantImages = req.files.filter(file => 
+            file.fieldname === `files[${index}]`
+        );
+        }
+ // If still no images, check for single file format
+        if (variantImages.length === 0 && req.files[index]) {
+            variantImages = [req.files[index]];
+        }
+
+        if (variantImages.length === 0) {
+            throw new Error(`Missing images for variant ${index + 1}`);
+        }
+            // if (!req.files[index]) {
+            //     throw new Error(`Missing image for variant ${index + 1}`);
+            // }
+            // Create image objects
+        const images = variantImages.map((image, imgIndex) => ({
+            imageURL: image.path,
+            cloudinaryId: image.filename,
+            isMain: imgIndex === 0 // First image is main
+        }));
 
             return {
                 ...variant,
                 variantId: generateVariantId(),
                 colors: variant.colors || [],
-                imageURL: req.files[index].path,
-                cloudinaryId: req.files[index].filename
+                images: images,
+                
             };
         });
 
@@ -79,15 +106,18 @@ exports.createProduct = asyncHandler(async (req, res) => {
     }
 });
 
+const isValidObjectId = (id) => {
+    return mongoose.Types.ObjectId.isValid(id);
+};
+
 // Get all products
 exports.getProducts = asyncHandler(async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
     
-    // Add filtering options
     const filter = {};
-    
+
     if (req.query.brand) {
         filter.brand = req.query.brand;
     }
@@ -116,7 +146,16 @@ exports.getProducts = asyncHandler(async (req, res) => {
 
 // Get a single product
 exports.getProduct = asyncHandler(async (req, res) => {
-    const product = await Product.findById(req.params.id)
+    const { id } = req.params;
+    
+    if (!isValidObjectId(id)) {
+        return res.status(400).json({ 
+            success: false,
+            message: 'Invalid product ID format'
+        });
+    }
+
+    const product = await Product.findById(id)
         .populate('brand')
         .populate('variants.colors')
         .populate('variants.size');
@@ -124,10 +163,8 @@ exports.getProduct = asyncHandler(async (req, res) => {
     if (!product) {
         return res.status(404).json({ 
             success: false,
-            message: 'Product not found',
-            error:{
-            detail: 'No product was found with id: ${id}'
-        } });
+            message: 'Product not found'
+        });
     }
 
     res.json({
@@ -152,6 +189,14 @@ const isDuplicateVariant = (variants, newVariant) => {
 // Update product with new logic
 exports.updateProduct = asyncHandler(async (req, res) => {
     const { id } = req.params;
+    
+    if (!isValidObjectId(id)) {
+        return res.status(400).json({ 
+            success: false,
+            message: 'Invalid product ID format'
+        });
+    }
+
     const { name, brandId, variants } = req.body;
     
     const product = await Product.findById(id);
@@ -205,7 +250,8 @@ exports.updateProduct = asyncHandler(async (req, res) => {
                         variantId: generateVariantId(),
                         size: variantData.size,
                         colors: variantData.colors,
-                        stock: variantData.stock || 0
+                        stock: variantData.stock || 0,
+                        images: []
                     };
                 }
 
@@ -216,11 +262,22 @@ exports.updateProduct = asyncHandler(async (req, res) => {
 
                 // Handle image update if provided
                 if (req.files && req.files[updatedVariants.length]) {
-                    if (targetVariant.cloudinaryId) {
-                        await cloudinary.uploader.destroy(targetVariant.cloudinaryId);
+                     // Delete old images from Cloudinary
+                     if (targetVariant.images && targetVariant.images.length > 0) {
+                        for (const image of targetVariant.images) {
+                            if (image.cloudinaryId) {
+                                await cloudinary.uploader.destroy(image.cloudinaryId);
+                            }
+                        }
                     }
-                    targetVariant.imageURL = req.files[updatedVariants.length].path;
-                    targetVariant.cloudinaryId = req.files[updatedVariants.length].filename;
+                      // Create new image objects
+                      const newImages = req.files.map((file, index) => ({
+                        imageURL: file.path,
+                        cloudinaryId: file.filename,
+                        isMain: index === 0
+                    }));
+
+                    targetVariant.images = newImages;
                 }
 
                 updatedVariants.push(targetVariant);
@@ -261,39 +318,51 @@ exports.updateProduct = asyncHandler(async (req, res) => {
 
 // Delete a product
 exports.deleteProduct = asyncHandler(async (req, res) => {
-    const product = await Product.findById(req.params.id);
+    const { id } = req.params;
+    
+    // Validate ObjectId format
+    if (!isValidObjectId(id)) {
+        return res.status(400).json({ 
+            success: false,
+            message: 'Invalid product ID format'
+        });
+    }
+
+    const product = await Product.findById(id);
 
     if (!product) {
         return res.status(404).json({ 
             success: false,
-            message: 'Product not found',
-            error:{
-            detail: 'No product was found with id: ${id}' 
-        }
+            message: 'Product not found'
         });
     }
 
     // Delete all associated images from Cloudinary
     for (const variant of product.variants) {
-        if (variant.cloudinaryId) {
-            await cloudinary.uploader.destroy(variant.cloudinaryId);
+        if (variant.images && variant.images.length > 0) {
+            for (const image of variant.images) {
+                if (image.cloudinaryId) {
+                    await cloudinary.uploader.destroy(image.cloudinaryId);
+                }
+            }
         }
     }
 
-    await Product.findByIdAndDelete(req.params.id);
+    await Product.findByIdAndDelete(id);
     res.status(200).json({ 
         success: true,
-        message: 'Product deleted successfully' });
+        message: 'Product deleted successfully' 
+    });
 });
 
 // Update a specific variant's image
 exports.updateVariantImage = asyncHandler(async (req, res) => {
     const { productId, variantId } = req.params;
     
-    if (!req.file) {
+    if (!req.files || !Array.isArray(req.files)) {
         return res.status(400).json({ 
             success: false,
-            message: 'No image file provided'
+            message: 'No images provided' 
         });
     }
     
@@ -314,15 +383,24 @@ exports.updateVariantImage = asyncHandler(async (req, res) => {
         });
     }
     
-    // Delete old image from Cloudinary if it exists
-    if (variant.cloudinaryId) {
-        await cloudinary.uploader.destroy(variant.cloudinaryId);
+   // Delete old images from Cloudinary
+   if (variant.images && variant.images.length > 0) {
+    for (const image of variant.images) {
+        if (image.cloudinaryId) {
+            await cloudinary.uploader.destroy(image.cloudinaryId);
+        }
     }
-    
+    }
+    // Create new image objects
+    const newImages = req.files.map((file, index) => ({
+        imageURL: file.path,
+        cloudinaryId: file.filename,
+        isMain: index === 0
+    }));
     // Update the specific variant's image
-    variant.imageURL = req.file.path;
-    variant.cloudinaryId = req.file.filename;
-    await product.save();
+   // Update variant images
+   variant.images = newImages;
+   await product.save();
     
     const updatedProduct = await Product.findById(productId)
         .populate('brand')

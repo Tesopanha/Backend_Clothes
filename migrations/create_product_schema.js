@@ -33,6 +33,21 @@ module.exports = {
                 unique: true 
             }
         }, { timestamps: true }));
+        // Image schema for multiple images per variant
+        const imageSchema = new mongoose.Schema({
+            imageURL: { 
+                type: String, 
+                required: true 
+            },
+            cloudinaryId: { 
+                type: String, 
+                required: true 
+            },
+            isMain: { 
+                type: Boolean, 
+                default: false 
+            }
+        }, { timestamps: true });
 
         const productVariantSchema = new mongoose.Schema({
             variantId: { 
@@ -55,17 +70,8 @@ module.exports = {
                 required: true, 
                 min: 0 
             },
-            imageURL: { 
-                type: String, 
-                required: false 
-            },
-            cloudinaryId: { 
-                type: String, 
-                required: false 
-            }
+            images:[imageSchema]
         }, { timestamps: true });
-
-      
 
         const Product = mongoose.model('Product', new mongoose.Schema({
             name: { 

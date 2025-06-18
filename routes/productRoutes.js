@@ -7,7 +7,7 @@ const { upload } = require('../config/cloudinary');
 
 // Product Routes
 router.post('/products', 
-    [auth, validateProduct, upload.array('images', 10)], // Allow up to 10 images
+    [auth, validateProduct, upload.any()], // Allow up to 10 images
     productController.createProduct
 );
 
