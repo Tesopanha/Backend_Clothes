@@ -22,8 +22,8 @@ router.patch('/products/:id',
 router.delete('/products/:id', [auth, validateObjectIdParam], productController.deleteProduct);
 
 // Update variant image
-router.patch('/products/:productId/variants/:variantIndex/image',
-    [auth, validateObjectIdParam, upload.single('image')],
+router.patch('/products/:productId/variants/:variantId/images',
+    [auth, validateObjectIdParam, upload.any()],
     productController.updateVariantImage
 );
 

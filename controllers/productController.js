@@ -383,21 +383,23 @@ exports.updateVariantImage = asyncHandler(async (req, res) => {
         });
     }
     
-   // Delete old images from Cloudinary
-   if (variant.images && variant.images.length > 0) {
-    for (const image of variant.images) {
-        if (image.cloudinaryId) {
-            await cloudinary.uploader.destroy(image.cloudinaryId);
+   
+    // Delete old images from Cloudinary
+    if (variant.images && variant.images.length > 0) {
+        for (const image of variant.images) {
+            if (image.cloudinaryId) {
+                await cloudinary.uploader.destroy(image.cloudinaryId);
+            }
         }
     }
-    }
-    // Create new image objects
+    
+    // Add new images (first is main)
     const newImages = req.files.map((file, index) => ({
         imageURL: file.path,
         cloudinaryId: file.filename,
         isMain: index === 0
     }));
-    // Update the specific variant's image
+    
    // Update variant images
    variant.images = newImages;
    await product.save();
