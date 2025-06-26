@@ -15,7 +15,7 @@ router.get('/products', productController.getProducts);
 router.get('/products/:id', validateObjectIdParam, productController.getProduct);
 
 router.patch('/products/:id', 
-    [auth, validateObjectIdParam, validateProductUpdate, upload.array('images', 10)],
+    [auth, validateObjectIdParam, validateProductUpdate, upload.any()],
     productController.updateProduct
 );
 
