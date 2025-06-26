@@ -119,7 +119,25 @@ exports.getProducts = asyncHandler(async (req, res) => {
     const filter = {};
 
     if (req.query.brand) {
-        filter.brand = req.query.brand;
+        // Check if brand is a valid ObjectId
+        if (mongoose.Types.ObjectId.isValid(req.query.brand)) {
+            filter.brand = req.query.brand;
+        } else {
+            // Lookup brand by name
+            const brandDoc = await Brand.findOne({ name: req.query.brand });
+            if (brandDoc) {
+                filter.brand = brandDoc._id;
+            } else {
+                // No such brand, return empty result
+                return res.json({
+                    success: true,
+                    data: [],
+                    totalProducts: 0,
+                    totalPages: 0,
+                    currentPage: page
+                });
+            }
+        }
     }
     
     if (req.query.search) {
