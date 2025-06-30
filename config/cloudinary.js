@@ -14,7 +14,7 @@ const storage = new CloudinaryStorage({
   cloudinary: cloudinary,
   params: {
     folder: 'clothes-api', // The name of the folder in cloudinary
-    allowed_formats: ['jpg', 'jpeg', 'png', 'gif'], // Allowed formats
+    allowed_formats: ['jpg', 'jpeg', 'png'], // Allowed formats
     transformation: [
         {
             quality: 'auto',
@@ -32,15 +32,15 @@ const brandstorage = new CloudinaryStorage({
   cloudinary: cloudinary,
   params: {
     folder: 'clothes-api', // The name of the folder in cloudinary
-    allowed_formats: ['jpg', 'jpeg', 'png', 'gif'], // Allowed formats
+    allowed_formats: ['jpg', 'jpeg', 'png' , 'svg'], // Allowed formats
     transformation: [
         {
             quality: 'auto',
             fetch_format: 'auto',
         },
         { 
-            width: 800, 
-            height: 800, 
+            width: 400, 
+            height: 100, 
             crop: 'fill',
             gravity: 'auto',
         }] // Optional image transformation

@@ -279,25 +279,35 @@ exports.updateProduct = asyncHandler(async (req, res) => {
                 if (variantData.colors) targetVariant.colors = variantData.colors;
 
                 // Handle image update if provided
-                if (req.files && req.files[updatedVariants.length]) {
-                     // Delete old images from Cloudinary
-                     if (targetVariant.images && targetVariant.images.length > 0) {
-                        for (const image of targetVariant.images) {
-                            if (image.cloudinaryId) {
-                                await cloudinary.uploader.destroy(image.cloudinaryId);
+                if (req.files && req.files.length > 0) {
+                    // Find images for this variant (assuming fieldname includes variant index or id)
+                    let variantImages = req.files.filter(file => file.fieldname === `files[${variantData.variantId}]`);
+                    if (variantImages.length === 0) {
+                        // fallback: if you use array index in fieldname
+                        variantImages = req.files.filter(file => file.fieldname === `files[${variants.indexOf(variantData)}]`);
+                    }
+                    if (variantImages.length > 0) {
+                        // Delete old images from Cloudinary
+                        if (targetVariant.images && targetVariant.images.length > 0) {
+                            for (const image of targetVariant.images) {
+                                if (image.cloudinaryId) {
+                                    try {
+                                        await cloudinary.uploader.destroy(image.cloudinaryId);
+                                    } catch (err) {
+                                        console.error('Failed to delete image from Cloudinary:', err);
+                                    }
+                                }
                             }
                         }
+                        // Save new images
+                        const newImages = variantImages.map((file, index) => ({
+                            imageURL: file.path,
+                            cloudinaryId: file.filename,
+                            isMain: index === 0
+                        }));
+                        targetVariant.images = newImages;
                     }
-                      // Create new image objects
-                      const newImages = req.files.map((file, index) => ({
-                        imageURL: file.path,
-                        cloudinaryId: file.filename,
-                        isMain: index === 0
-                    }));
-
-                    targetVariant.images = newImages;
                 }
-
                 updatedVariants.push(targetVariant);
             }
 
